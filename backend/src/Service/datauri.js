@@ -1,12 +1,13 @@
-import DataURIparser from 'datauri/parser';
+import DataURIparser from 'datauri/parser.js';
 import path from 'path';
+import logger from '../Utils/logger.js';
 
 const getdatauri = (file) => {
     if (!file || !file.originalname || !file.buffer) {
-        throw new Error(`file is not found`);
+        logger.warn(`invalid in file`)
     }
     const parser = new DataURIparser();
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = path.extname(file.originalname).toString();
     return parser.format(ext, file.buffer);
 }
 

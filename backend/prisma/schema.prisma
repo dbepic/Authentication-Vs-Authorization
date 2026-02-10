@@ -1,38 +1,13 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
-}
-
-model User {
-  id            Int       @id @default(autoincrement())
-  username      String?
-  lname         String?
-  email         String    @unique
-  phone         String?
-  password      String?
-  role          Role      @default(user)
-  status        Status    @default(active)
-  isVerified    Boolean   @default(false)
-  refresh_token String?   @db.Text
-  LastLogin     DateTime?
-  googleId      String?   @unique
-  avatar        String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  profile Profile?
-
-  @@index([email])
-  @@map("UserTable")
+  url      = env("DATABASE_URL")
 }
 
 model Profile {
@@ -41,18 +16,66 @@ model Profile {
   skills    Json?
   education Json?
   resume    Json?
-  userId    Int     @unique
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("ProfileTable")
+  // Relation to User
+  userId Int  @unique(map: "ProfileTable_userId_key")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiletable")
 }
 
-enum Role {
+model User {
+  id                Int        @id @default(autoincrement())
+  username          String?
+  lname             String?
+  email             String     @unique(map: "UserTable_email_key")
+  phone             String?
+  password          String?
+  role              UserRole   @default(user)
+  status            UserStatus @default(active)
+  isVerified        Boolean    @default(false)
+  refreshToken      String?    @map("refresh_token") @db.Text
+  googleId          String?    @unique(map: "UserTable_googleId_key")
+  avatar            String?
+  forgotpassword    Int?       @default(0)
+  forgotpasswordExp DateTime?
+  lastLogin         DateTime?  @map("LastLogin")
+
+  // Relations
+  profile   Profile?
+  companies Company[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email], map: "UserTable_email_idx")
+  @@map("usertable")
+}
+
+model Company {
+  id          Int     @id @default(autoincrement())
+  companyName String? @map("companyNmae") // Mapping typo to DB field if necessary
+  logo        String?
+  description String?
+  location    Json?
+
+  // Relation to User
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  @@map("companyModel")
+}
+
+enum UserRole {
   user
   admin
+
+  @@map("usertable_role")
 }
 
-enum Status {
+enum UserStatus {
   active
   inactive
+
+  @@map("usertable_status")
 }

@@ -1,30 +1,33 @@
-import express from "express";
-import cors from 'cors';
-import cookieParser from "cookie-parser";
-import bodyParser from "body-parser";
-
+import express from 'express'
+import helmet from 'helmet'
+import bodyParser from 'body-parser'
+import cookieParser from 'cookie-parser'
+import cors from 'cors'
 import logger from './Utils/logger.js'
-import helmet from "helmet";
+
+import authRoute from './Router/authRoute.js'
+import userRoute from './Router/userRoute.js'
 
 const app = express();
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-app.use(cookieParser());
-app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use(helmet());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(cors({
     origin: process.env.CLIENT_URL,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-Authorization']
+}))
+
 
 app.get('/', (req, res) => {
-    logger.info(`testing in app function`)
+    logger.info('Server is running :)');
+    res.send('Server is running :)');
 })
 
+app.use('/api', authRoute);
+app.use('/api', userRoute);
 
 export default app;

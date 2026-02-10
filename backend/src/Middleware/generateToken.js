@@ -1,73 +1,71 @@
-import jwt from 'jsonwebtoken';
-import logger from '../Util/logger.js';
-import "dotenv/config.js";
-import { StatusCodes } from 'http-status-codes';
-import prisma from '../Config/db.js';
+import jwt from "jsonwebtoken";
+import "dotenv/config";
+import logger from "../Utils/logger.js";
+import { StatusCodes } from "http-status-codes";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
+
+/* ================= ACCESS TOKEN ================= */
 const AccessToken = async (userId) => {
     try {
-        const token = jwt.sign({ id: userId },
+        return jwt.sign(
+            { id: userId },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: "15m" }
-        )
-        return token;
+        );
     } catch (error) {
-        logger.error(`internal server error`);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            message: "internal server error",
-            success: false
-        })
+        logger.error(`Error generating access token: ${error.message}`);
+        throw error;
     }
-}
+};
 
+/* ================= REFRESH TOKEN ================= */
 const RefreshToken = async (userId) => {
     try {
-        const token = jwt.sign({ id: userId },
+        const token = jwt.sign(
+            { id: userId },
             process.env.REFRESH_TOKEN_SECRET,
-            { expiresIn: "7d" }
-        )
-        const updateToken = await prisma.user.update({
+            { expiresIn: "7d" } // ✅ longer life
+        );
+
+        await prisma.user.update({
             where: { id: userId },
             data: {
-                refresh_token: token
+                refreshToken: token
             }
-        })
+        });
+
         return token;
     } catch (error) {
-        logger.error(`internal server error`);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            message: "internal server error",
-            success: false
-        })
+        logger.error(`Error generating refresh token: ${error.message}`);
+        throw error;
     }
-}
+};
 
-
+/* ================= AUTH MIDDLEWARE ================= */
 const Authorization = async (req, res, next) => {
     try {
-        const token = req.cookies.accesstoken || req.headers?.authorization.split(",");
+        const token = req.cookies.accesstoken || req.headers.authorization.split(" ")[1];
+
         if (!token) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
-                message: "Unauthorized",
-                success: false
-            })
+                success: false,
+                message: "Access token missing"
+            });
         }
+
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-        if (!decoded) {
-            return res.status(StatusCodes.UNAUTHORIZED).json({
-                message: "Unauthorized",
-                success: false
-            })
-        }
-        req.userId = decoded.id;
+
+        req.user = decoded.id;
         next();
     } catch (error) {
-        logger.error(`internal server error`);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            message: "internal server error",
-            success: false
-        })
+        logger.warn(`Invalid or expired token`);
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+            success: false,
+            message: "Invalid or expired token"
+        });
     }
-}
+};
 
-export { AccessToken, RefreshToken, Authorization }
+export { AccessToken, RefreshToken, Authorization };
